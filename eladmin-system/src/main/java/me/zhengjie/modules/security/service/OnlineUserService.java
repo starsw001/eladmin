@@ -1,11 +1,27 @@
+/*
+ *  Copyright 2019-2020 Zheng Jie
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package me.zhengjie.modules.security.service;
 
 import lombok.extern.slf4j.Slf4j;
-import me.zhengjie.modules.security.config.SecurityProperties;
+import me.zhengjie.modules.security.config.bean.SecurityProperties;
 import me.zhengjie.modules.security.service.dto.JwtUserDto;
 import me.zhengjie.modules.security.service.dto.OnlineUserDto;
 import me.zhengjie.utils.*;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -14,14 +30,14 @@ import java.util.*;
 
 /**
  * @author Zheng Jie
- * @Date 2019年10月26日21:56:27
+ * @date 2019年10月26日21:56:27
  */
 @Service
 @Slf4j
 public class OnlineUserService {
 
     private final SecurityProperties properties;
-    private RedisUtils redisUtils;
+    private final RedisUtils redisUtils;
 
     public OnlineUserService(SecurityProperties properties, RedisUtils redisUtils) {
         this.properties = properties;
@@ -35,15 +51,15 @@ public class OnlineUserService {
      * @param request /
      */
     public void save(JwtUserDto jwtUserDto, String token, HttpServletRequest request){
-        String job = jwtUserDto.getUser().getDept().getName() + "/" + jwtUserDto.getUser().getJob().getName();
+        String dept = jwtUserDto.getUser().getDept().getName();
         String ip = StringUtils.getIp(request);
         String browser = StringUtils.getBrowser(request);
         String address = StringUtils.getCityInfo(ip);
         OnlineUserDto onlineUserDto = null;
         try {
-            onlineUserDto = new OnlineUserDto(jwtUserDto.getUsername(), jwtUserDto.getUser().getNickName(), job, browser , ip, address, EncryptUtils.desEncrypt(token), new Date());
+            onlineUserDto = new OnlineUserDto(jwtUserDto.getUsername(), jwtUserDto.getUser().getNickName(), dept, browser , ip, address, EncryptUtils.desEncrypt(token), new Date());
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error(e.getMessage(),e);
         }
         redisUtils.set(properties.getOnlineKey() + token, onlineUserDto, properties.getTokenValidityInSeconds()/1000);
     }
@@ -114,7 +130,7 @@ public class OnlineUserService {
         for (OnlineUserDto user : all) {
             Map<String,Object> map = new LinkedHashMap<>();
             map.put("用户名", user.getUserName());
-            map.put("岗位", user.getJob());
+            map.put("部门", user.getDept());
             map.put("登录IP", user.getIp());
             map.put("登录地点", user.getAddress());
             map.put("浏览器", user.getBrowser());
@@ -158,4 +174,18 @@ public class OnlineUserService {
         }
     }
 
+    /**
+     * 根据用户名强退用户
+     * @param username /
+     */
+    @Async
+    public void kickOutForUsername(String username) throws Exception {
+        List<OnlineUserDto> onlineUsers = getAll(username);
+        for (OnlineUserDto onlineUser : onlineUsers) {
+            if (onlineUser.getUserName().equals(username)) {
+                String token =EncryptUtils.desDecrypt(onlineUser.getKey());
+                kickOut(token);
+            }
+        }
+    }
 }

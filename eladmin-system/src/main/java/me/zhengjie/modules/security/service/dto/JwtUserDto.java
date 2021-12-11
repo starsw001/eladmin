@@ -1,6 +1,21 @@
+/*
+ *  Copyright 2019-2020 Zheng Jie
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package me.zhengjie.modules.security.service.dto;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.alibaba.fastjson.annotation.JSONField;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import me.zhengjie.modules.system.service.dto.UserDto;
@@ -18,47 +33,49 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 public class JwtUserDto implements UserDetails {
 
-    private UserDto user;
+    private final UserDto user;
 
-    @JsonIgnore
-    private List<GrantedAuthority> authorities;
+    private final List<Long> dataScopes;
+
+    @JSONField(serialize = false)
+    private final List<GrantedAuthority> authorities;
 
     public Set<String> getRoles() {
         return authorities.stream().map(GrantedAuthority::getAuthority).collect(Collectors.toSet());
     }
 
     @Override
-    @JsonIgnore
+    @JSONField(serialize = false)
     public String getPassword() {
         return user.getPassword();
     }
 
     @Override
-    @JsonIgnore
+    @JSONField(serialize = false)
     public String getUsername() {
         return user.getUsername();
     }
 
-    @JsonIgnore
+    @JSONField(serialize = false)
     @Override
     public boolean isAccountNonExpired() {
         return true;
     }
 
-    @JsonIgnore
+    @JSONField(serialize = false)
     @Override
     public boolean isAccountNonLocked() {
         return true;
     }
 
-    @JsonIgnore
+    @JSONField(serialize = false)
     @Override
     public boolean isCredentialsNonExpired() {
         return true;
     }
 
     @Override
-    @JsonIgnore
+    @JSONField(serialize = false)
     public boolean isEnabled() {
         return user.getEnabled();
     }
